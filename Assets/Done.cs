@@ -1,72 +1,78 @@
 ﻿using ColorShapeLinks.Common;
 using ColorShapeLinks.Common.AI;
-using System.Collections.Generic;
 using System.Threading;
 
 public class Done : AbstractThinker
 {
+    private const int win = 1000;
+    private const int loss = -1000;
+    private int maxDepth;
 
-    private List<FutureMove> possibleMoves;
-    private List<FutureMove> nonLosingMoves;
-    private System.Random random;
+    public override string ToString()
+    {
+        return base.ToString() + "_V1";
+    }
 
     public override void Setup(string str)
     {
-        possibleMoves = new List<FutureMove>();
-        nonLosingMoves = new List<FutureMove>();
-        random = new System.Random();
+        maxDepth = 50;
     }
+
     public override FutureMove Think(Board board, CancellationToken ct)
     {
-        Winner winner;
-        PColor AiColor = board.Turn;
+        (FutureMove move, int score) decision = Negamax(board, ct, board.Turn, 0);
 
-        possibleMoves.Clear();
-        nonLosingMoves.Clear();
+        return decision.move;
+    }
 
-        for (int collums = 0; collums < Cols; collums++)
+    private (FutureMove move, int score) Negamax(Board board, CancellationToken ct, PColor player, int depth)
+    {
+        if (board.CheckWinner().ToPColor() == player)
         {
-            // Skip, if collum is full
-            if (board.IsColumnFull(collums))
-                continue;
-            // Loop through the two shapes
-            for (int isShape = 0; isShape < 2; isShape++)
-            {
-                PShape shape = (PShape)isShape;
-                // If there's no pieces of this shape skip this move
-                if (board.PieceCount(AiColor, shape) == 0)
-                    continue;
-                // Add move to possible move list
-                possibleMoves.Add(new FutureMove(collums, shape));
-
-                // Test move
-                board.DoMove(shape, collums);
-
-                // Verify if has a winner
-                winner = board.CheckWinner();
-
-                // Undo the move
-                board.UndoMove();
-
-                // The AI is the winner?
-                if (winner.ToPColor() == AiColor)
-                    // Return this move immeditely
-                    return new FutureMove(collums, shape);
-                // If our opponent is the winner
-                else if (winner.ToPColor() != AiColor.Other())
-                    // Add this move to non-losing move list
-                    nonLosingMoves.Add(new FutureMove(collums, shape));
-
-            }
+            return (FutureMove.NoMove, win);
         }
-        // Where to change!!!!!
 
-        // Do we have any moves on the non-losing move list?
-        if (nonLosingMoves.Count > 0)
-            // If so, return a random one
-            return nonLosingMoves[(random.Next(nonLosingMoves.Count))];
+        else if (board.CheckWinner().ToPColor() == player.Other())
+        {
+            return (FutureMove.NoMove, loss);
+        }
 
-        // If we get here, just return any valid move
-        return possibleMoves[random.Next(possibleMoves.Count)];
+        else if (board.CheckWinner() == Winner.Draw)
+        {
+            return (FutureMove.NoMove, 0);
+        }
+
+        else if (depth == maxDepth)
+        {
+            return (FutureMove.NoMove, 0);
+        }
+
+        else
+        {
+            (FutureMove move, int score) bestMove = (new FutureMove(0, PShape.Round), loss);
+
+            for (int i = 0; i < Cols; i++)
+            {
+                if (!board.IsColumnFull(i))
+                    continue;
+
+                for (int j = 0; j < 2; j++)
+                {
+                    PShape shape = (PShape)j;
+
+                    if (board.PieceCount(board.Turn, shape) == 0) continue;
+
+                    board.DoMove((PShape)j, i);
+
+                    int score = -Negamax(board, ct, board.Turn, depth + 1).score;
+
+                    if (score > bestMove.score)
+                        bestMove = (new FutureMove(i, (PShape)j), score);
+
+                    board.UndoMove();
+                }
+            }
+            return bestMove;
+        }
     }
 }
