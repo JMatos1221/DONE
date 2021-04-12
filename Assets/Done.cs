@@ -4,75 +4,123 @@ using System.Threading;
 
 public class Done : AbstractThinker
 {
-    private const int win = 1000;
-    private const int loss = -1000;
+    private const float win = float.PositiveInfinity;
+    private const float loss = float.NegativeInfinity;
     private int maxDepth;
 
     public override string ToString()
     {
-        return base.ToString() + "_V1";
+        return base.ToString() + "_V2";
     }
 
     public override void Setup(string str)
     {
-        maxDepth = 50;
+        maxDepth = 2;
     }
 
     public override FutureMove Think(Board board, CancellationToken ct)
     {
-        (FutureMove move, int score) decision = Negamax(board, ct, board.Turn, 0);
+        (FutureMove move, float score) decision = Negamax(board, ct, board.Turn, 0);
 
         return decision.move;
     }
 
-    private (FutureMove move, int score) Negamax(Board board, CancellationToken ct, PColor player, int depth)
+    private (FutureMove move, float score) Negamax(Board board, CancellationToken ct, PColor player, int depth)
     {
-        if (board.CheckWinner().ToPColor() == player)
+        (FutureMove move, float score) bestMove;
+
+        Winner winner;
+
+        // If a cancellation request was made...
+        if (ct.IsCancellationRequested)
         {
-            return (FutureMove.NoMove, win);
+            // ...set a "no move" and skip the remaining part of
+            // the algorithm
+            bestMove = (FutureMove.NoMove, float.NaN);
         }
 
-        else if (board.CheckWinner().ToPColor() == player.Other())
+        else if ((winner = board.CheckWinner()) != Winner.None)
         {
-            return (FutureMove.NoMove, loss);
-        }
+            PColor winnerColor = winner.ToPColor();
 
-        else if (board.CheckWinner() == Winner.Draw)
-        {
-            return (FutureMove.NoMove, 0);
+            if (winnerColor == player)
+            {
+                bestMove = (FutureMove.NoMove, win);
+            }
+
+            else if (winnerColor == player.Other())
+            {
+                bestMove = (FutureMove.NoMove, loss);
+            }
+
+            else
+            {
+                bestMove = (FutureMove.NoMove, 0f);
+            }
         }
 
         else if (depth == maxDepth)
         {
-            return (FutureMove.NoMove, 0);
+            bestMove = (FutureMove.NoMove, Heuristic(board, player));
         }
 
         else
         {
-            (FutureMove move, int score) bestMove = (new FutureMove(0, PShape.Round), loss);
+            bestMove = (FutureMove.NoMove, loss);
 
             for (int i = 0; i < Cols; i++)
             {
-                if (!board.IsColumnFull(i))
+                if (board.IsColumnFull(i))
                     continue;
 
                 for (int j = 0; j < 2; j++)
                 {
                     PShape shape = (PShape)j;
 
-                    if (board.PieceCount(board.Turn, shape) == 0) continue;
+                    if (board.PieceCount(player, shape) == 0) continue;
 
-                    board.DoMove((PShape)j, i);
+                    board.DoMove(shape, i);
 
-                    int score = -Negamax(board, ct, board.Turn, depth + 1).score;
-
-                    if (score > bestMove.score)
-                        bestMove = (new FutureMove(i, (PShape)j), score);
+                    float eval = -Negamax(board, ct, player.Other(), depth + 1).score;
 
                     board.UndoMove();
+
+                    if (eval > bestMove.score)
+                        bestMove = (new FutureMove(i, shape), eval);
                 }
             }
-            return bestMove;
         }
+        return bestMove;
+    }
+
+    private float Heuristic(Board board, PColor player)
+    {
+        float PieceChain(Piece piece, int i, int j)
+        {
+            float chainValue = 0;
+
+            if (piece.color == player)
+            {
+
+            }
+
+            return chainValue;
+        }
+
+        float val = 0;
+
+        for (int i = 0; i < Rows; i++)
+        {
+            for (int j = 0; j < Cols; j++)
+            {
+                Piece? piece = board[i, j];
+
+                if (piece.HasValue)
+                {
+
+                }
+            }
+        }
+        return val;
     }
 }
