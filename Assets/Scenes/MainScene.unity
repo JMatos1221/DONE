@@ -329,7 +329,7 @@ MonoBehaviour:
   squarePiecesPerPlayer: 11
   lastMoveAnimLength: 1
   aITimeLimit: 0.2
-  minAIGameMoveTime: 0.2
+  minAIGameMoveTime: 0
   pointsPerWin: 3
   pointsPerDraw: 1
   pointsPerLoss: 0

@@ -10,12 +10,12 @@ public class Done : AbstractThinker
 
     public override string ToString()
     {
-        return base.ToString() + "_V2";
+        return base.ToString() + "_V3";
     }
 
     public override void Setup(string str)
     {
-        maxDepth = 2;
+        maxDepth = 3;
     }
 
     public override FutureMove Think(Board board, CancellationToken ct)
@@ -95,13 +95,26 @@ public class Done : AbstractThinker
 
     private float Heuristic(Board board, PColor player)
     {
-        float PieceChain(Piece piece, int i, int j)
+        float PieceChain(Piece? piece, int x, int y)
         {
             float chainValue = 0;
 
-            if (piece.color == player)
+            if (piece.Value.color == player)
             {
+                for (int i = -1; i < 2; i++)
+                    for (int j = -1; j < 2; j++)
+                    {
+                        if (i == 0 && j == 0) continue;
 
+                        if (x + i < 0 || x + i >= board.rows ||
+                            y + j < 0 || y + j >= board.cols) continue;
+
+                        if (board[x + i, y + j].HasValue)
+                        {
+                            if (board[x + i, y + j].Value.color == player)
+                                chainValue += 5;
+                        }
+                    }
             }
 
             return chainValue;
@@ -109,15 +122,15 @@ public class Done : AbstractThinker
 
         float val = 0;
 
-        for (int i = 0; i < Rows; i++)
+        for (int i = 0; i < board.rows; i++)
         {
-            for (int j = 0; j < Cols; j++)
+            for (int j = 0; j < board.cols; j++)
             {
                 Piece? piece = board[i, j];
 
-                if (piece.HasValue)
+                if (piece.HasValue && piece.Value.color == player)
                 {
-
+                    val += PieceChain(piece, i, j);
                 }
             }
         }
