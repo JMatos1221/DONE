@@ -10,7 +10,7 @@ public class Done : AbstractThinker
 
     public override string ToString()
     {
-        return base.ToString() + "_V3";
+        return base.ToString() + "_V4";
     }
 
     public override void Setup(string str)
@@ -87,6 +87,14 @@ public class Done : AbstractThinker
 
                     if (eval > bestMove.score)
                         bestMove = (new FutureMove(i, shape), eval);
+
+                    if (eval == bestMove.score &&
+                        board.PieceCount(player, shape) >
+                        board.PieceCount(player, shape == PShape.Round ?
+                        PShape.Square : PShape.Round))
+                    {
+                        bestMove = (new FutureMove(i, shape), eval);
+                    }
                 }
             }
         }
@@ -112,6 +120,9 @@ public class Done : AbstractThinker
                         if (board[x + i, y + j].HasValue)
                         {
                             if (board[x + i, y + j].Value.color == player)
+                                chainValue += 5;
+
+                            if (board[x + i, y + j].Value.shape == player.Shape())
                                 chainValue += 5;
                         }
                     }
