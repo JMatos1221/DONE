@@ -1,6 +1,7 @@
 ﻿using ColorShapeLinks.Common;
 using ColorShapeLinks.Common.AI;
 using System.Threading;
+using System;
 
 namespace Done
 {
@@ -12,7 +13,7 @@ namespace Done
 
         public override string ToString()
         {
-            return "G10_" + base.ToString() + "_V5";
+            return "G10_" + base.ToString() + "_V6";
         }
 
         public override void Setup(string str)
@@ -22,15 +23,14 @@ namespace Done
 
         public override FutureMove Think(Board board, CancellationToken ct)
         {
-            (FutureMove move, float score) decision = Negamax(board, ct, board.Turn, 0);
+            (FutureMove move, float score) decision = Negamax(board, ct, board.Turn, 0, float.NegativeInfinity, float.PositiveInfinity);
 
             return decision.move;
         }
 
-        private (FutureMove move, float score) Negamax(Board board, CancellationToken ct, PColor player, int depth)
+        private (FutureMove move, float score) Negamax(Board board, CancellationToken ct, PColor player, int depth, float alpha, float beta)
         {
             (FutureMove move, float score) bestMove;
-
             Winner winner;
 
             // If a cancellation request was made...
@@ -83,20 +83,16 @@ namespace Done
 
                         board.DoMove(shape, i);
 
-                        float eval = -Negamax(board, ct, player.Other(), depth + 1).score;
+                        float eval = -Negamax(board, ct, player.Other(), depth + 1, float.NegativeInfinity, float.PositiveInfinity).score;
 
                         board.UndoMove();
 
                         if (eval > bestMove.score)
                             bestMove = (new FutureMove(i, shape), eval);
 
-                        /*else if (eval == bestMove.score &&
-                            board.PieceCount(player, shape) >
-                            board.PieceCount(player, shape == PShape.Round ?
-                            PShape.Square : PShape.Round))
-                        {
-                            bestMove = (new FutureMove(i, shape), eval);
-                        }*/
+                        if (eval > alpha) alpha = eval;
+
+                        if (beta < alpha) return bestMove;
                     }
                 }
             }
@@ -107,25 +103,42 @@ namespace Done
         {
             float PieceChain(Piece? piece, int x, int y)
             {
-                float chainValue = 0;
+                PColor pieceColor = piece.Value.color;
+                PShape pieceShape = piece.Value.shape;
 
-                if (piece.Value.color == player)
-                {
-                    for (int i = -1; i < 2; i++)
-                        for (int j = -1; j < 2; j++)
+                float chainValue = board.cols / 2 - Math.Abs(board.cols / 2 - y) * 8;
+
+                for (int i = -1; i < 2; i++)
+                    for (int j = -1; j < 2; j++)
+                    {
+                        if (i == 0 && j == 0) continue;
+
+                        if (x + i < 0 || x + i >= board.rows ||
+                            y + j < 0 || y + j >= board.cols) continue;
+
+                        Piece? currentPiece = board[x + i, y + j];
+
+                        if (currentPiece.HasValue)
                         {
-                            if (i == 0 && j == 0) continue;
-
-                            if (x + i < 0 || x + i >= board.rows ||
-                                y + j < 0 || y + j >= board.cols) continue;
-
-                            if (board[x + i, y + j].HasValue)
+                            if (currentPiece.Value.color == pieceColor)
                             {
-                                if (board[x + i, y + j].Value.color == player)
-                                    chainValue += 5;
+                                chainValue += 4;
+
+                                if (currentPiece.Value.shape == pieceShape &&
+                                    pieceShape == player.Other().Shape())
+                                    chainValue -= 2;
+
+                                else if (currentPiece.Value.shape == pieceShape &&
+                                    pieceShape == player.Shape())
+                                    chainValue -= 1;
+                            }
+
+                            else if (currentPiece.Value.shape == pieceShape)
+                            {
+                                chainValue += 6;
                             }
                         }
-                }
+                    }
 
                 return chainValue;
             }
@@ -141,6 +154,11 @@ namespace Done
                     if (piece.HasValue && piece.Value.color == player)
                     {
                         val += PieceChain(piece, i, j);
+                    }
+
+                    else if (piece.HasValue && piece.Value.color == player.Other())
+                    {
+                        val -= PieceChain(piece, i, j);
                     }
                 }
             }
