@@ -7,20 +7,18 @@ namespace Done
 {
     public class DoneThinker : AbstractThinker
     {
-        private const float win = 100000;
+        private const float win = float.PositiveInfinity;
         private const float loss = float.NegativeInfinity;
         private int maxDepth;
-        object locker;
 
         public override string ToString()
         {
-            return "G10_" + base.ToString() + "_V7";
+            return "G10_" + base.ToString() + "_V8";
         }
 
         public override void Setup(string str)
         {
-            maxDepth = 2;
-            locker = new object();
+            maxDepth = Cols <= 7 ? 3 : 2;
         }
 
         public override FutureMove Think(Board board, CancellationToken ct)
@@ -51,7 +49,7 @@ namespace Done
 
                 if (winnerColor == player)
                 {
-                    bestMove = (FutureMove.NoMove, win * (maxDepth - depth + 1));
+                    bestMove = (FutureMove.NoMove, win);
                 }
 
                 else if (winnerColor == player.Other())
@@ -72,43 +70,33 @@ namespace Done
 
             else
             {
-                Thread[] threadList = new Thread[board.cols];
-
                 for (int i = 0; i < board.cols; i++)
                 {
-                    threadList[i] = new Thread(() =>
                     {
+                        if (board.IsColumnFull(i))
+                            continue;
 
-                        if (!board.IsColumnFull(i))
+                        for (int j = 0; j < 2; j++)
                         {
+                            PShape shape = (PShape)j;
 
-                            for (int j = 0; j < 2; j++)
-                            {
-                                PShape shape = (PShape)j;
+                            if (board.PieceCount(player, shape) == 0) continue;
 
-                                if (board.PieceCount(player, shape) == 0) continue;
+                            board.DoMove(shape, i);
 
-                                board.DoMove(shape, i);
+                            float eval = -Negamax(board, ct, player.Other(), depth + 1,
+                                float.NegativeInfinity, float.PositiveInfinity).score;
 
-                                float eval = -Negamax(board, ct, player.Other(), depth + 1,
-                                    float.NegativeInfinity, float.PositiveInfinity).score;
+                            board.UndoMove();
 
-                                board.UndoMove();
+                            if (eval > bestMove.score)
+                                bestMove = (new FutureMove(i, shape), eval);
 
-                                lock (locker)
-                                {
-                                    if (eval > bestMove.score)
-                                        bestMove = (new FutureMove(i, shape), eval);
+                            if (eval > alpha) alpha = eval;
 
-                                    if (eval > alpha) alpha = eval;
-
-                                    if (beta < alpha) Thread.CurrentThread.Join();
-                                }
-                            }
+                            if (beta < alpha) return bestMove;
                         }
-                    });
-                    threadList[i].Start();
-                    threadList[i].Join();
+                    }
                 }
             }
             return bestMove;
