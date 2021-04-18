@@ -10,6 +10,7 @@ namespace Done
         private const float win = 100000;
         private const float loss = float.NegativeInfinity;
         private int maxDepth;
+        object locker;
 
         public override string ToString()
         {
@@ -19,6 +20,7 @@ namespace Done
         public override void Setup(string str)
         {
             maxDepth = 2;
+            locker = new object();
         }
 
         public override FutureMove Think(Board board, CancellationToken ct)
@@ -93,12 +95,15 @@ namespace Done
 
                                 board.UndoMove();
 
-                                if (eval > bestMove.score)
-                                    bestMove = (new FutureMove(i, shape), eval);
+                                lock (locker)
+                                {
+                                    if (eval > bestMove.score)
+                                        bestMove = (new FutureMove(i, shape), eval);
 
-                                if (eval > alpha) alpha = eval;
+                                    if (eval > alpha) alpha = eval;
 
-                                if (beta < alpha) Thread.CurrentThread.Join();
+                                    if (beta < alpha) Thread.CurrentThread.Join();
+                                }
                             }
                         }
                     });
