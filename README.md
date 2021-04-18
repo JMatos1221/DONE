@@ -26,7 +26,7 @@ Para a nossa heurística pensámos em verificar as peças ao redor de cada uma, 
 Se as peças tiverem a mesma forma (do jogador) mas cores diferentes, o valor somado à heuristica é superior, fazendo assim o AI assumir que é uma situação mais valiosa para chegar à vitória.
 Sendo que quando é calculada a heuristica, o valor é somado se a peça for do jogador em questão e subtraído se for do adversário.  
 
-![4 pontos](Images/4p.png)  
+![4 pontos](Images/4p.png)
 ![4 pontos menos 1](Images/4p1.png)  
-![4 pontos menos 2](Images/4p2.png)  
+![4 pontos menos 2](Images/4p2.png)
 ![6 pontos](Images/6p.png)  
